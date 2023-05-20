@@ -1,54 +1,119 @@
 package algo.util;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Scanner;
 import org.apache.commons.math3.fraction.Fraction;
 
 public class SimplexeFraction {
     int dimension;
-    String[] variables;
-    Fraction[] coeffExpression;
-    int contraintes;
-    String[] variableEcart;
-    Fraction[][] coeffContraintes;
+    String[] variablesHB;
+    Contrainte contrainte;
+    String[] variablesBase;
     Fraction[][] tableau;
     String[] varDispo = {"x", "y", "z", "t", "u", "v"} ;
+    ArrayList<String> variablesEcart = new ArrayList<>();
+    ArrayList<String> variablesArtificielle = new ArrayList<>();
 
-    public SimplexeFraction(int dimension, int contraintes) throws Exception {
+    public SimplexeFraction(int dimension, Contrainte contrainte) throws Exception {
         this.setDimension(dimension);
-        this.setContraintes(contraintes);
-        variables=new String[dimension];
-        coeffExpression=new Fraction[dimension];
-        variableEcart=new String[this.contraintes];
-        coeffContraintes=new Fraction[this.contraintes][this.contraintes+this.dimension+1];
-        this.variables=new String[dimension];
-        this.variableEcart=new String[contraintes];
-        //x ,y, z, .... 
-        this.setVariables();
-        //S1 ,S2, .... ,Sn 
-        this.setVariableEcart();
-        this.tableau=new Fraction[this.contraintes+1][this.dimension+this.contraintes+1];
+        this.setContrainte(contrainte);
+        variablesHB=new String[dimension];
+        this.variablesHB=new String[dimension];
+        this.variablesBase=new String[this.getContrainte().getNbContrainte()];
+        this.tableau=new Fraction[this.getContrainte().getNbContrainte()+1][this.dimension+this.getContrainte().getNbContrainte()+1];
     }
-    
-    
-
 
     public void setTableau(Fraction [][] lignes) throws Exception{
+        //x ,y, z, .... 
+        this.setVariablesHB();
+        //S1 ,S2, .... ,Sn 
+        this.setVariablesBase();
+        
+        Fraction [][] generated = generateWithCoeffByComparaison(lignes);
+        
         for (int i = 0; i < this.tableau.length; i++) {
-            tableau[i] = lignes[i];
+            tableau[i] = generated[i];
         }
     }
-
-
-    public void Print(){
-        String expression="f=";
-        for (int i = 0; i <this.dimension ; i++) {
-            if (i<this.dimension-1){
-                expression+="("+this.getCoeffExpression()[i]+")"+this.getVariables()[i]+"+";
-            }else {
-                expression+="("+this.getCoeffExpression()[i]+")"+this.getVariables()[i];
+    
+    //rearangement des coeff selon comparaison
+    public Fraction [][] generateWithCoeffByComparaison(Fraction [][] lignes) {
+        int nbCoeffSup = nbCoeffSupplementaireByComparaison();
+        Fraction [][] generated = new Fraction[lignes.length][lignes[0].length + nbCoeffSup];
+        
+        //completion tableau initial fa tsy ajoutena le col farany
+        for (int i = 0; i < lignes.length; i++) {
+            for (int j = 0; j < lignes[0].length - 1; j++) {
+                generated[i][j] = lignes[i][j];
             }
         }
-        System.out.println(expression);
+        
+        //completion derniere colonne -> 2nd membre
+        int derniereCol = lignes[0].length - 1 + nbCoeffSup;
+        for (int i = 0; i < lignes.length; i++) {
+            generated[i][derniereCol] = lignes[i][lignes[0].length - 1];
+        }
+        
+        int idColDepart = lignes[0].length - 1;
+        
+        //completion en 0 des restes
+        for (int i = 0; i < lignes.length; i++) {
+            for (int j = idColDepart; j < idColDepart + nbCoeffSup; j++) {
+                generated[i][j] = new Fraction(0);   
+            }
+        }
+        
+        //completion des coeff sup
+        int indiceCol = idColDepart;
+        for (int i = 0; i < lignes.length - 1; i++) { 
+            if(contrainte.getComparaisons()[i].trim().equalsIgnoreCase("<=")) {
+                generated[i][indiceCol] = new Fraction(1);
+            }
+            else if(contrainte.getComparaisons()[i].trim().equalsIgnoreCase(">=")) {
+                generated[i][indiceCol] = new Fraction(-1);
+            }
+            indiceCol++;
+        }
+        
+        return generated;
+    }
+    
+    public int nbCoeffSupplementaireByComparaison() {
+        int nb = 0;
+        for (String comparaison : contrainte.getComparaisons()) {
+            //inferieur ou egal
+            if(comparaison.trim().equalsIgnoreCase("<=")) {
+                nb = nb + 1; //Sn
+                variablesEcart.add("S"+nb);
+            }
+            else if(comparaison.trim().equalsIgnoreCase("=")) {
+                nb = nb + 1; //An
+                variablesArtificielle.add("A"+nb);
+            }
+            else if(comparaison.trim().equalsIgnoreCase(">=")) {
+                nb = nb + 1; //Sn
+                variablesEcart.add("S"+nb);
+                variablesArtificielle.add("A"+nb); //meme indice
+                nb = nb + 1; //An
+            }
+        }
+        return nb;
+    }
+    
+    public void showVariablesEcart() {
+        System.out.println("showVariablesEcart");
+        for (int i = 0; i < variablesEcart.size(); i++) {
+            String get = variablesEcart.get(i);
+            System.out.println(get);
+        }
+    }
+    
+    public void showVariablesArtificielle() {
+        System.out.println("showVariablesArtificielle");
+        for (int i = 0; i < variablesArtificielle.size(); i++) {
+            String get = variablesArtificielle.get(i);
+            System.out.println(get);
+        }
     }
 
     public int getDimension() {
@@ -60,60 +125,50 @@ public class SimplexeFraction {
         this.dimension = dimension;
     }
 
-    public String[] getVariables() {
-        return variables;
+    public String[] getVariablesHB() {
+        return variablesHB;
     }
 
-    public void setVariables() {
-        String[] variables=new String[this.dimension];
-        //System.out.println("Entrer le nom de vos variables:");
-        //Scanner scan=new Scanner(System.in);
-        // for (int i = 0; i < this.dimension; i++) {
-        //     variables[i]=scan.nextLine();
-        // }
+    public void setVariablesHB() {
+        String[] variablesHB=new String[this.dimension];
         
         for (int i = 0; i < this.dimension; i++) {
-            variables[i]=varDispo[i];
+            variablesHB[i]=varDispo[i];
         }
-        this.variables = variables;
-    }
-
-    public Fraction[] getCoeffExpression() {
-        return coeffExpression;
+        this.variablesHB = variablesHB;
     }
 
 
-    public String[] getVariableEcart() {
-        return variableEcart;
+    public String[] getVariablesBase() {
+        return variablesBase;
     }
 
-    public void setVariableEcart() {
-        //System.out.println("Entrer les variables d'ecarts:");
-        // Scanner scan=new Scanner(System.in);
-        // for (int i = 0; i < this.dimension; i++) {
-        //     this.getVariableEcart()[i]=scan.nextLine();
-        // }
+    public void setVariablesBase() {
         for (int i = 0; i < this.dimension; i++) {
-            this.getVariableEcart()[i]="S"+(i+1);
+            this.getVariablesBase()[i]="S"+(i+1);
         }
     }
 
-    public int getContraintes() {
-        return contraintes;
+    public Contrainte getContrainte() {
+        return contrainte;
     }
 
-    public void setContraintes(int contraintes) {
-        this.contraintes = contraintes;
+    public void setContrainte(Contrainte contrainte) {
+        this.contrainte = contrainte;
     }
 
-    public Fraction[][] getCoeffContraintes() {
-        return coeffContraintes;
+    public String[] getVarDispo() {
+        return varDispo;
+    }
+
+    public void setVarDispo(String[] varDispo) {
+        this.varDispo = varDispo;
     }
     
     public void afficheTab(){
-        for (int i = 0; i < this.tableau.length; i++) {
+        for (Fraction[] tableau1 : this.tableau) {
             for (int j = 0; j < this.tableau[0].length; j++) {
-                System.out.print(this.tableau[i][j]+" ");
+                System.out.print(tableau1[j] + " ");
             }
             System.out.println();
         }
@@ -133,16 +188,16 @@ public class SimplexeFraction {
             }
         }
         if (misyPositif==false)
-            throw new Exception("L'optimum est "+tableau[this.contraintes][this.contraintes+this.dimension]);
+            throw new Exception("L'optimum est "+tableau[this.getContrainte().getNbContrainte()][this.getContrainte().getNbContrainte()+this.dimension]);
         return valiny;
     }
     public int getMin(int max) throws Exception{
         int kely=0;
-        Fraction petit=tableau[kely][this.dimension+this.contraintes].divide(tableau[kely][max]);
+        Fraction petit=tableau[kely][this.dimension+this.getContrainte().getNbContrainte()].divide(tableau[kely][max]);
         boolean misyPositif=false;
         for (int i = 0; i < tableau.length-1; i++) {
             if (tableau[i][max].floatValue()>0){
-                if ((tableau[i][this.dimension+this.contraintes].divide(tableau[i][max])).compareTo(petit) < 0){
+                if ((tableau[i][this.dimension+this.getContrainte().getNbContrainte()].divide(tableau[i][max])).compareTo(petit) < 0){
                     kely=i;
                     petit=tableau[i][max];
                 }
@@ -177,17 +232,17 @@ public class SimplexeFraction {
             Fraction optimum = new Fraction(0);
             //derniere ligne du tableau misy ny coeff fonction cible -> indice : nb contraintes 
             // maka ny INDICE COLONNE coeff max ao @ derniere ligne
-            int max = this.getIndiceMax(tableau[this.contraintes]);
+            int max = this.getIndiceMax(tableau[this.getContrainte().getNbContrainte()]);
             
             // maka ny INDICE LIGNE a partir anle indice colonne coeff max azo teo ambony tq [elt derniere colonne @iny ligne iny / elt @iny colonne iny] est le min apres comparaison ligne par ligne suivant cette colonne  
             int min = this.getMin(max);
 
             //maka anle variable vaovao hiditra ao am base
-            String temp=this.getVariables()[max];
+            String temp=this.getVariablesHB()[max];
 
             // echange entre variable miditra ao am base sy le miala
-            this.getVariables()[max]=this.getVariableEcart()[min];
-            this.getVariableEcart()[min]=temp;
+            this.getVariablesHB()[max]=this.getVariablesBase()[min];
+            this.getVariablesBase()[min]=temp;
 
             System.out.println("Max=" + max + " Min=" + min);
             
@@ -201,10 +256,10 @@ public class SimplexeFraction {
         } catch (Exception e){
             //rehefa negatif daholo le coeff derniere ligne
             for (int i = 0; i <tableau.length-1 ; i++) {
-                System.out.println(this.getVariableEcart()[i]+"="+tableau[i][this.dimension+this.contraintes]);
+                System.out.println(this.getVariablesBase()[i]+"="+tableau[i][this.dimension+this.getContrainte().getNbContrainte()]);
             }
-            //System.out.println("optimum en fraction "+tableau[this.contraintes][this.contraintes+this.dimension]);
-            return tableau[this.contraintes][this.contraintes+this.dimension];
+            //System.out.println("optimum en fraction "+tableau[this.getContrainte().getNbContrainte()][this.getContrainte().getNbContrainte()+this.dimension]);
+            return tableau[this.getContrainte().getNbContrainte()][this.getContrainte().getNbContrainte()+this.dimension];
         }
         //boucle jusqu'a meet the condition
         return this.optimum();
