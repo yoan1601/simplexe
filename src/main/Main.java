@@ -10,7 +10,7 @@ public class Main {
         try {
             int dimension = 3;
             int nbContraintes = 3;
-            String [] comparaisons = { "<=", "<=", "<=" };
+            String [] comparaisons = { "<=", ">=", "<=" };
             Contrainte contrainte = new Contrainte(nbContraintes, comparaisons);
             
             SimplexeFraction simplexe=new SimplexeFraction(dimension, contrainte);
@@ -32,10 +32,12 @@ public class Main {
             
             simplexe.setTableau(lignes);
             
-            simplexe.showVariablesEcart();
-            simplexe.showVariablesArtificielle();
+            //simplexe.showVariablesEcart();
+            //simplexe.showVariablesArtificielle();
             
             simplexe.afficheTab();
+            
+            //System.out.println("ok");
             
             Fraction optimum = simplexe.optimum();
             System.out.println("L'otimum est "+optimum);
