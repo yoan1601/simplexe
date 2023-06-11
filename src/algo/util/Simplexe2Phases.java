@@ -262,7 +262,19 @@ public class Simplexe2Phases {
             }
         }
         else { //coeff tsotra apetraka eo am colonne tsirairay
-            
+            //tetezina le ligne farany
+            for (int i = 0; i < tableau[0].length; i++) {
+                Fraction coeff = new Fraction(0);
+                //jerena ra ao am fonction le variable
+                if(isInFonctionInitale(allVariables[i])) {
+                    coeff = varDecision.get(allVariables[i]);
+                }
+                tableau[tableau.length - 1][i] = coeff;  
+            }
+            //ra misy constante
+            if(varDecision.containsKey("c")) {
+                tableau[tableau.length - 1][tableau[0].length - 1] = varDecision.get("c");
+            }
         }
     }
     
@@ -289,7 +301,7 @@ public class Simplexe2Phases {
     }
     
     public Fraction getOptimum() {
-        afficheTab();
+        initialisation();
         if(use2phases) {
             SimplexePhase1 sp1 = new SimplexePhase1(contrainte, tableau, varDecision, isMax, use2phases, horsBase, base, varEcart, varArtificielle, allVariables);
             sp1.getOptimum();
@@ -332,8 +344,24 @@ public class Simplexe2Phases {
             System.out.println(e.getLocalizedMessage());
             constructBaseFinale();
             System.out.println("optimum : "+tableau[tableau.length - 1][tableau[0].length - 1].multiply(-1));
-            return tableau[tableau.length - 1][tableau[0].length - 1].multiply(-1);
+            optimum = tableau[tableau.length - 1][tableau[0].length - 1].multiply(-1);
+            return optimum;
         }
+    }
+    
+    public void initialisation() {
+        afficheTab();
+        System.out.println("base intiale");
+        for (int i = 0; i < base.size(); i++) {
+            String get = base.get(i);
+            System.out.println(get);
+        }
+        System.out.println("hors base intiale");
+        for (int i = 0; i < horsBase.size(); i++) {
+            String get = horsBase.get(i);
+            System.out.println(get);
+        }
+        System.out.println("=========================================");
     }
    
     
